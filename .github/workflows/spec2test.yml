@@ -54,11 +54,6 @@ jobs:
       - name: Install Spec2Test CLI
         if: steps.changed-specs.outputs.has_changes == 'true'
         run: |
-          # npm registryから公開されている場合:
-          # npm install -g @liot/spec2test
-          #
-          # ローカルの場合（リポジトリ内にCLIを含む場合）:
-          cd path/to/050.CLI   # <-- 適宜変更
           npm ci
           npm run build
 
@@ -74,7 +69,7 @@ jobs:
               output_file="${spec_file%.spec.md}.spec.test.ts"
               output_file="${output_file%.md}.test.ts"
 
-              node path/to/050.CLI/dist/cli/index.js generate \
+              node dist/cli/index.js generate \
                 "$spec_file" \
                 -o "$output_file" \
                 -m o3-mini \
