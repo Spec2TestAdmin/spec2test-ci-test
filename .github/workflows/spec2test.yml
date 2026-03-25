@@ -1,0 +1,112 @@
+# ============================================================================
+# Spec2Test: PR時に仕様変更を検知してテストを自動生成するワークフロー
+#
+# 使い方:
+#   1. このファイルをリポジトリの .github/workflows/ にコピー
+#   2. Repository Secrets に OPENAI_API_KEY を設定
+#   3. spec-path を自分のプロジェクトの仕様書パスに変更
+# ============================================================================
+
+name: "Spec2Test: Auto Generate Tests"
+
+on:
+  pull_request:
+    paths:
+      # 仕様書が変更された場合にトリガー（パスは適宜変更してください）
+      - "docs/specs/**/*.md"
+      - "specs/**/*.md"
+      - "**/*.spec.md"
+
+jobs:
+  generate-tests:
+    name: Generate Tests from Specs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Detect Changed Spec Files
+        id: changed-specs
+        run: |
+          # PRで変更された仕様書ファイルを検出
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- '*.spec.md' 'docs/specs/**/*.md' 'specs/**/*.md' || true)
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install Spec2Test CLI
+        if: steps.changed-specs.outputs.has_changes == 'true'
+        run: |
+          # npm registryから公開されている場合:
+          # npm install -g @liot/spec2test
+          #
+          # ローカルの場合（リポジトリ内にCLIを含む場合）:
+          cd path/to/050.CLI   # <-- 適宜変更
+          npm ci
+          npm run build
+
+      - name: Generate Tests for Changed Specs
+        if: steps.changed-specs.outputs.has_changes == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          echo "${{ steps.changed-specs.outputs.files }}" | while IFS= read -r spec_file; do
+            if [ -n "$spec_file" ]; then
+              echo "🧪 処理中: $spec_file"
+              # 出力先ファイル名を自動決定（.spec.md → .spec.test.ts）
+              output_file="${spec_file%.spec.md}.spec.test.ts"
+              output_file="${output_file%.md}.test.ts"
+
+              node path/to/050.CLI/dist/cli/index.js generate \
+                "$spec_file" \
+                -o "$output_file" \
+                -m o3-mini \
+                -f playwright \
+                -l ja
+            fi
+          done
+
+      - name: Comment on PR
+        if: steps.changed-specs.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const changedFiles = `${{ steps.changed-specs.outputs.files }}`;
+            const files = changedFiles.trim().split('\n').filter(f => f);
+
+            if (files.length === 0) return;
+
+            const body = [
+              '## 🤖 Spec2Test: テストコード自動生成レポート',
+              '',
+              '以下の仕様書の変更を検知し、テストコードを自動生成しました:',
+              '',
+              ...files.map(f => `- \`${f}\``),
+              '',
+              '> 生成されたテストコードを確認し、必要に応じて修正してください。',
+              '> モデル: `o3-mini` / フォーマット: `playwright`'
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });

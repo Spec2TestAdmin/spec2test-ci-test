@@ -1,0 +1,65 @@
+name: "Spec2Test AI Test Generator"
+description: "仕様書からPlaywright/Jestテストコードを自動生成するGitHub Action"
+author: "Liot LLC"
+
+inputs:
+  spec-path:
+    description: "仕様書ファイルのパス（グロブパターン対応）"
+    required: true
+  output-path:
+    description: "生成されたテストファイルの出力先パス"
+    required: false
+    default: ""
+  model:
+    description: "使用するAIモデル (o3-mini | gpt-4o | gpt-4o-mini)"
+    required: false
+    default: "o3-mini"
+  format:
+    description: "出力フォーマット (playwright | jest | markdown)"
+    required: false
+    default: "playwright"
+  lang:
+    description: "出力言語 (ja | en)"
+    required: false
+    default: "ja"
+  openai-api-key:
+    description: "OpenAI APIキー"
+    required: true
+
+outputs:
+  generated-file:
+    description: "生成されたテストファイルのパス"
+  tokens-used:
+    description: "使用されたトークン数"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+
+    - name: Install Spec2Test CLI
+      shell: bash
+      run: |
+        cd ${{ github.action_path }}
+        npm ci
+        npm run build
+
+    - name: Run Spec2Test
+      shell: bash
+      env:
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+      run: |
+        OUTPUT_FLAG=""
+        if [ -n "${{ inputs.output-path }}" ]; then
+          OUTPUT_FLAG="-o ${{ inputs.output-path }}"
+        fi
+
+        node ${{ github.action_path }}/dist/cli/index.js generate \
+          "${{ inputs.spec-path }}" \
+          -m "${{ inputs.model }}" \
+          -f "${{ inputs.format }}" \
+          -l "${{ inputs.lang }}" \
+          $OUTPUT_FLAG

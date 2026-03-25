@@ -1,0 +1,49 @@
+{
+  "name": "@liot/spec2test",
+  "version": "0.1.0",
+  "description": "AI-powered test code generator from specifications. Supports Playwright test generation and reverse spec engineering.",
+  "main": "dist/core/index.js",
+  "types": "dist/core/index.d.ts",
+  "bin": {
+    "spec2test": "dist/cli/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli/index.js",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "ai",
+    "testing",
+    "playwright",
+    "test-generation",
+    "specification",
+    "cli",
+    "automation",
+    "ci-cd"
+  ],
+  "author": "Liot LLC",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "commander": "^13.1.0",
+    "cosmiconfig": "^9.0.0",
+    "openai": "^4.80.0",
+    "ora": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^4.1.1",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.1"
+  }
+}
