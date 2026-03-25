@@ -11,7 +11,7 @@ import * as path from "node:path";
 /** リトライ設定 */
 const MAX_RETRIES = 3;
 const INITIAL_DELAY_MS = 1000;
-const TIMEOUT_MS = 30000;
+const TIMEOUT_MS = 120000;
 
 /**
  * 内部ヘルパー（テスト時にvi.spyOnでモック可能）
